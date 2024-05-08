@@ -106,7 +106,6 @@ class ChainWebSocket {
     this.listener(JSON.parse(message.data));
   };
 
-  /*
   onClose = () => {
     this.closed = true;
     if (this.keepalive_timer) {
@@ -114,40 +113,43 @@ class ChainWebSocket {
       this.keepalive_timer = undefined;
     }
 
-    for (var cbId = this.responseCbId + 1; cbId <= this.cbId; cbId += 1)
-      this.cbs[cbId].reject(new Error("connection closed"));
+    for (var cbId = this.responseCbId + 1; cbId <= this.cbId; cbId += 1) {
+      if (this.cbs[cbId]) {
+        this.cbs[cbId].reject(new Error("connection closed"));
+      }
+    }
 
     this.statusCb && this.statusCb("closed");
     this._closeCb && this._closeCb();
     this.on_close && this.on_close();
   };
-  */
 
   close = () =>
-    new Promise((resolve, reject) => {
-      clearInterval(this.keepalive_timer);
-      this.keepalive_timer = undefined;
-
-      this._closeCb = () => {
-        resolve();
-        this._closeCb = null;
-      };
-
-      if (!this.ws) {
-        console.log("Websocket already cleared", this);
-        return resolve();
-      }
-
+    new Promise((res, rej) => {
       try {
+        clearInterval(this.keepalive_timer);
+        this.keepalive_timer = undefined;
+
+        this._closeCb = () => {
+          res();
+          this._closeCb = null;
+        };
+
+        if (!this.ws) {
+          console.log("Websocket already cleared", this);
+          return res();
+        }
+
         if (this.ws.terminate) {
           this.ws.terminate();
         } else {
           this.ws.close();
         }
 
-        if (this.ws.readyState === 3) resolve();
+        if (this.ws.readyState === 3) res();
       } catch (error) {
-        reject(error);
+        console.error("Error closing WebSocket: ", error);
+        rej(error);
       }
     });
 
@@ -254,30 +256,6 @@ class ChainWebSocket {
 
   login = (user, password) =>
     this.connect_promise.then(() => this.call([1, "login", [user, password]]));
-
-  close = () =>
-    new Promise((res) => {
-      clearInterval(this.keepalive_timer);
-      this.keepalive_timer = undefined;
-
-      this._closeCb = () => {
-        res();
-        this._closeCb = null;
-      };
-
-      if (!this.ws) {
-        console.log("Websocket already cleared", this);
-        return res();
-      }
-
-      if (this.ws.terminate) {
-        this.ws.terminate();
-      } else {
-        this.ws.close();
-      }
-
-      if (this.ws.readyState === 3) res();
-    });
 }
 
 export default ChainWebSocket;
