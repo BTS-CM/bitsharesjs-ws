@@ -57,13 +57,7 @@ class ChainWebSocket {
         if (this.current_reject) {
           this.current_reject = null;
           this.close();
-          reject(
-            new Error(
-              "Connection attempt timed out after " +
-                connectTimeout / 1000 +
-                "s"
-            )
-          );
+          reject(new Error("Connection attempt timed out after " + connectTimeout / 1000 + "s"));
         }
       }, connectTimeout);
     });
@@ -94,7 +88,7 @@ class ChainWebSocket {
     this.current_resolve();
   };
 
-  onError = error => {
+  onError = (error) => {
     if (this.keepalive_timer) {
       clearInterval(this.keepalive_timer);
       this.keepalive_timer = undefined;
@@ -107,11 +101,12 @@ class ChainWebSocket {
     }
   };
 
-  onMessage = message => {
+  onMessage = (message) => {
     this.recv_life = MAX_RECV_LIFE;
     this.listener(JSON.parse(message.data));
   };
 
+  /*
   onClose = () => {
     this.closed = true;
     if (this.keepalive_timer) {
@@ -126,12 +121,39 @@ class ChainWebSocket {
     this._closeCb && this._closeCb();
     this.on_close && this.on_close();
   };
+  */
 
-  call = params => {
+  close = () =>
+    new Promise((resolve, reject) => {
+      clearInterval(this.keepalive_timer);
+      this.keepalive_timer = undefined;
+
+      this._closeCb = () => {
+        resolve();
+        this._closeCb = null;
+      };
+
+      if (!this.ws) {
+        console.log("Websocket already cleared", this);
+        return resolve();
+      }
+
+      try {
+        if (this.ws.terminate) {
+          this.ws.terminate();
+        } else {
+          this.ws.close();
+        }
+
+        if (this.ws.readyState === 3) resolve();
+      } catch (error) {
+        reject(error);
+      }
+    });
+
+  call = (params) => {
     if (this.ws.readyState !== 1) {
-      return Promise.reject(
-        new Error("websocket state error:" + this.ws.readyState)
-      );
+      return Promise.reject(new Error("websocket state error:" + this.ws.readyState));
     }
     let method = params[1];
     if (SOCKET_DEBUG)
@@ -148,25 +170,21 @@ class ChainWebSocket {
         "subscribe_to_market",
         "broadcast_transaction_with_callback",
         "set_pending_transaction_callback",
-        "set_block_applied_callback"
+        "set_block_applied_callback",
       ].includes(method)
     ) {
       // Store callback in subs map
       this.subs[this.cbId] = {
-        callback: params[2][0]
+        callback: params[2][0],
       };
 
       // Replace callback with the callback id
       params[2][0] = this.cbId;
     }
 
-    if (
-      ["unsubscribe_from_market", "unsubscribe_from_accounts"].includes(method)
-    ) {
+    if (["unsubscribe_from_market", "unsubscribe_from_accounts"].includes(method)) {
       if (typeof params[2][0] !== "function") {
-        throw new Error(
-          "First parameter of unsub must be the original callback"
-        );
+        throw new Error("First parameter of unsub must be the original callback");
       }
 
       let unSubCb = params[2].splice(0, 1)[0];
@@ -182,7 +200,7 @@ class ChainWebSocket {
 
     var request = {
       method: "call",
-      params: params
+      params: params,
     };
     request.id = this.cbId;
     this.send_life = MAX_SEND_LIFE;
@@ -191,18 +209,14 @@ class ChainWebSocket {
       this.cbs[this.cbId] = {
         time: new Date(),
         resolve: resolve,
-        reject: reject
+        reject: reject,
       };
       this.ws.send(JSON.stringify(request));
     });
   };
 
-  listener = response => {
-    if (SOCKET_DEBUG)
-      console.log(
-        "[ChainWebSocket] <---- reply ----<",
-        JSON.stringify(response)
-      );
+  listener = (response) => {
+    if (SOCKET_DEBUG) console.log("[ChainWebSocket] <---- reply ----<", JSON.stringify(response));
 
     let sub = false,
       callback = null;
@@ -242,7 +256,7 @@ class ChainWebSocket {
     this.connect_promise.then(() => this.call([1, "login", [user, password]]));
 
   close = () =>
-    new Promise(res => {
+    new Promise((res) => {
       clearInterval(this.keepalive_timer);
       this.keepalive_timer = undefined;
 
