@@ -136,9 +136,12 @@ class ChainWebSocket {
         };
 
         if (!this.ws) {
-          console.log("Websocket already cleared", this);
+          console.log("Websocket already cleared");
           return res();
         }
+
+        // Add event listener for 'close' event
+        this.ws.on("close", res);
 
         if (this.ws.terminate) {
           this.ws.terminate();
