@@ -13,7 +13,7 @@
     "test:manager": "BABEL_ENV=test mocha --require @babel/register ./test/Manager --watch",
     "pretest:browser": "NODE_ENV=dev browserify test/*.js -o browser-test/browser-test.js -t [ babelify ]",
     "test:browser": "BABEL_ENV=test http-server ./browser-test",
-    "clean": "del lib & del build",
+    "clean": "del /Q lib & del /Q build",
     "prebuild": "yarn run clean",
     "build": "babel src -d lib",
     "postbuild": "yarn run browserify",
